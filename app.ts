@@ -1,4 +1,7 @@
 import ProgramManager from "./ProgramManager";
+import Box from "./box";
+import Box3 from "./Box3";
+import Ray3 from "./Ray3";
 
 const app = new ProgramManager();
 
@@ -210,18 +213,133 @@ app.addProgram(
 );
 
 app.addProgram("bounce", async () => {
-  const bounce = (n: number) => {
+  function bounce(n: number) {
     write(n);
     if (n > 0) {
       bounce(n - 1);
       write(n);
     }
-  };
+  }
   clearIO();
+
   bounce(2);
 
   return true;
 });
+
+app.addProgram(
+  "gejm",
+  () => {
+    const area_size = 400;
+    const fov = 50;
+    const angle_step = 0.1;
+    const tracing_radius = 400;
+    const step = 5;
+
+    let boxes: Box[] = [];
+
+    boxes.push(new Box(0, 50, 0, 0, 50, 50));
+    boxes.push(new Box(140, 140, 0, 0, 20, 20));
+
+    let px = 250;
+    let py = 250;
+
+    let a = 0;
+
+    const dtr = (d: number): number => d * (Math.PI / 180);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key == "a") {
+        a--;
+      } else if (e.key == "d") {
+        a++;
+      } else if (e.key == "w") {
+        let x_term = Math.cos(dtr(a)) * step;
+        let y_term = Math.sin(dtr(a)) * step;
+        px += x_term;
+        py += y_term;
+      } else if (e.key == "s") {
+        let x_term = Math.cos(dtr(a)) * step;
+        let y_term = Math.sin(dtr(a)) * step;
+        px -= x_term;
+        py -= y_term;
+      }
+    });
+
+    const ray_result = (
+      x: number,
+      y: number,
+      r: number,
+      angle: number
+    ): number[] => {
+      let dist = [-1, 0];
+      let dists = [];
+      for (let b of boxes) {
+        for (let i: number = 0; i < r; i++) {
+          let dx = x + Math.cos(dtr(angle)) * i;
+          let dy = y + Math.sin(dtr(angle)) * i;
+          //console.log(boxes[0].pointIntersects(10, 40));
+
+          if (
+            dx < 0 ||
+            dx > area_size ||
+            dy < 0 ||
+            dy > area_size ||
+            b.pointIntersects(dx, dy)
+          ) {
+            if (b.pointIntersects(dx, dy)) {
+              dists.push([i, 1]);
+            } else {
+              dists.push([i, 0]);
+            }
+            break;
+          }
+        }
+      }
+      if (dists.length > 0) {
+        dist = dists.reduce((min, curr) => (curr[0] < min[0] ? curr : min));
+      }
+      return dist;
+    };
+
+    update = () => {
+      fill("black");
+      const rays = fov / angle_step;
+      for (let i = 0; i < rays; i++) {
+        const ray_angle = a + i * angle_step - fov / 2;
+        const ray_trace = ray_result(px, py, tracing_radius, ray_angle);
+        const dist = ray_trace[0];
+        const id = ray_trace[1];
+
+        const intensity =
+          dist > 0 ? (tracing_radius - dist) / tracing_radius : 0;
+
+        const bar_x = (i * W) / rays;
+        const bar_y = H / 2 + -intensity * (H / 2);
+        const bar_w = W / rays;
+        const bar_h = intensity * H;
+
+        let color = `rgb(${intensity * 255},0,0)`;
+        if (id == 1) {
+          color = `rgb(0,0,${intensity * 255})`;
+        }
+
+        rectangle(bar_x, bar_y, bar_w, bar_h, color);
+        rectangle(bar_x, H - bar_y, bar_w, bar_y, "rgb(0,100,0)");
+      }
+    };
+    return true;
+  },
+  true
+);
+
+app.addProgram(
+  "3d",
+  () => {
+    return true;
+  },
+  true
+);
 
 while (true) {
   let res = await app.queryPrograms();
